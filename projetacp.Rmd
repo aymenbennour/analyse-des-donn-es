@@ -1,0 +1,237 @@
+---
+title: "projet acp"
+author: "bennour mohamed aymen "
+date: '2022-02-05'
+output:
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+---
+
+
+La base de données {reponses} . Les données contiennent les preferences des series  des individus
+c'est une base de 33 lignes et de 57 variables.
+
+
+# Objectifs de l'ACP 
+l'objectif de cet acp est de classer les individus en des classes selon leurs preferences et leurs genres preferes de series.
+D'abord l'objectif est classer les individus a travers les preferences des series et finalement  de les interpreter  ces preferences a travers les variables qualitatives comme l'age et la categorie socioprofessionelle a travers une analyse des Correspondances Multiples.
+
+
+# Importer et explorer le jeu de données et exprimer la matrices des series 
+```{r}
+library("readxl")
+reponses=read_excel("reponses.xlsx")
+head(reponses)
+df=reponses[,22:35]
+
+  #library(dplyr)
+  #library(magrittr)
+  #library(knitr)
+  #library(ggplot2)
+
+```
+ 
+## 1. Pertinence de l'ACP 
+  
+ Le corrgram donné ci-dessous permet d'étudier les corrélations entre les variables quantitatives : il est clair qu'il existe des corrélations importantes entre des groupes de variables ce qui suggère la pertinence de cette ACP (par exemple: game of thrones et vikings et game of thrones et you ).
+ 
+```{r}
+library(corrplot)
+
+X=as.matrix(reponses[,c(22:35)])
+M<-cor(X)
+library(RColorBrewer)
+corrplot(M, type="upper", order="hclust", 
+         col=brewer.pal(n=8, name="RdBu"))
+```
+
+ 
+## resultat de l'acp 
+```{r, echo=TRUE}
+library("factoextra")
+res.pca=PCA(reponses[,22:35],ncp = 5,graph = F)
+```
+
+
+## 2. Choix du nombre d'axes à retenir
+
+Trois critères devront être utlisés : taux d'inertie cumulé, critère de Kaiser et critère du coude.
+
+L'objet $\tt eig$ est une matrice à trois colonnes contenants respectivement les valeurs propres de l'ACP, la proportion de variance de chaque composante et les variance cumulées par les composantes principales.   
+
+```{r, echo=TRUE}
+head(res.pca$eig)
+fviz_screeplot(res.pca, ncp=10)
+```
+
+
+
+a)	Critère de kaiser : on remarque qu’il y a 5 axes dont les valeurs propres sont supérieures à 1 donc on retient 4 axes d’après ce critère.
+
+b)	Critère du taux d’inertie cumulée :
+On remarque que le taux d’inertie cumulé des  2 premiers axes est de 36% qui est un taux important compte tenu du fait que nous avons 13 variables : on va donc, d’après ce critère, retenir les 2 premiers axes. 
+
+c)	Critère du coude : On remarque que le coude se trouve au niveau du deuxième axe (figure ci dessous) d’après ce critère, on devrait retenir les 2 premiers axes.
+ 
+
+
+         
+En faisant une sorte de vote des 3 critères on devrait  retenir les 2 premiers axes.
+
+
+
+## 3. Interprétation de la carte des variables 
+
+la matrice des coordonees des variables : 
+```{r, echo=TRUE}
+res.pca$var$coord
+```
+la matrice des coordonees des cos carees des variables :
+```{r, echo=TRUE}
+res.pca$var$cos2
+```
+
+```{r}
+fviz_pca_var(res.pca)
+fviz_pca_var(res.pca, col.var="cos2") +
+  scale_color_gradient2(low="white", mid="blue", 
+                        high="red", midpoint=0.6) + 
+ theme_minimal()
+```
+
+  Interprétation de cette première carte des variables (i.e. axes 1 et 2) : 
+
+d'apres les contibutions des variables et la carte des variables on a :
+
+Les deux premières dimensions contiennent 45% de l'inertie totale (l'inertie est la variance totale du tableau de données, i.e. la trace de la matrice des corrélations).
+
+les variables "breaking bad" et "prison break" sont positivement  corrélée avec l'axe 1 tandis que les variables le series"stranger things est faibelement corrélée avec cet et la  variable "you" est faiblement corrolee avec cet axe ainsi le premier axe correspend a l'axe **" suspense "**
+
+quant au deuxieme axe , on remarque que les variables "dark","stranger things","you","sherlock" sont postivement corrélée avec cet axe or que les variables "game of thrones "  est negativement corrélée avec cet axe selon les notes donnees par les individus donc ca peut etre l'axe de **"mystere "**
+
+
+
+## 4. Interprétation de la carte des individus
+
+
+```{r}
+fviz_pca_ind(res.pca,geom = "point",col.ind.sup = 'gray')
+fviz_pca_ind(res.pca,geom = "text",col.ind.sup = 'gray')
+```
+`on remarque qu'il ya principalement 3 classes tant que la quatrieme classe n'est pas aussi remarquable ainsi on peut classer les 34 individus selon les categories suivantes :
+-une categorie qui aime bien les deux types (a droite et en haut)
+-une categorie qui n'aime que les series de suspense qui est plus importante (a droite et en bas) 
+-une categorie qui n'aime que les series mysterieuse qui  est moins importante (a gauche eten bas )
+-une categorie qui n'aime pas les deux types citees precedement (a gauche et en bas )
+
+
+```{r}
+plot.PCA(res.pca, axes=c(1, 2), choix="ind",cex=0.7)
+```
+
+
+## 6 classification des individus 
+```{r}
+library(cluster)
+library(FactoMineR)
+x=reponses[,22:35]
+classif<-agnes(X, method="ward")
+
+plot(classif,xlab="individu",main="")
+title("Dendrogramme")
+
+```
+
+d'apres le Dendrogramme on peut classer les individus sur 4 classes excatement comme la carte des individus l'a deja montre precedement , 
+ainsi cutree doit etre sur le nivaeu 4 
+
+```{r}
+d=dist(scale(X),method = "euclidian")
+hc1=hclust(d,method = "ward.D") 
+plot(hc1)
+plot(hc1, hang = -1)
+
+```
+
+# Output hclust
+```{r}
+hc1$dist.method
+hc1$method
+hc1$height
+hc1$order## Order des indivuds sur le dendogramme
+hc1$merge## Déroulement du processus d'aggrégation.
+```
+##clasification sur 4 classes : 
+```{r}
+classif2<-as.hclust(classif)
+plot(rev(classif2$height), type="h", ylab="hauteurs")
+rect.hclust(hc1,k=4)
+classes<-cutree(classif2,k=4)
+classes
+```
+ ainsi on a classer les individus sur 4 classes selon leurs preferences des deux genres "suspense"et "mystere"(qui sont les axes qu'on la determine precedement ) 
+
+#3. Rajouter la classe d'affectation de chaque individu en tant que variable
+```{r}
+reponses.comp<-cbind.data.frame(X, as.factor(classes))
+colnames(reponses)[58]<-"Classe"
+head(reponses.comp)
+
+```
+
+
+
+
+##6 acm sur les variables qualitatives age,csp,netflix,classes :
+ 
+l'objectif de cette partie est d'expliquer la clasification qu'on a fait precedement par d'autres variables qualitative .
+
+1.importation des packages et de la matrice des variables qualitatives :
+```{r}
+library(FactoMineR)
+library(factoextra)
+library(FactoInvestigate)
+df=cbind.data.frame(reponses[,3:4],reponses[6])
+result=cbind.data.frame(df,reponses.comp[15])
+result
+```
+
+#la matrice result contient les variables age csp netflix et les classes 
+
+2. execution de la acm  : 
+
+```{r}
+res.mca <- MCA (result, graph = FALSE)
+```
+
+3.  Calcul le taux d’inertie cumulé des 2 premiers axes de cette ACM:
+
+```{r}
+res.mca$eig
+```
+3. choix du nombre d'axe a retenir : 
+
+```{r}
+fviz_screeplot(res.mca)
+```
+d'apres les 3 criteres on doit retenir 2 axes .
+
+
+4. Interprétation de la première carte des modalités:
+
+```{r}
+#Représentation de la première carte des modalités
+fviz_mca_var (res.mca,
+              repel = TRUE, 
+              ggtheme = theme_minimal ())
+```
+
+interpretation de la carte : 
+On a un premier groupe de modalités à droite constitué des modalités "age entre 24 et 35" ,"dans la vie active" classe 2 et 3 et ont un compte netflix ce qui est significative et cette classe a tendence a plutot regarder les series plutot de suspense 
+
+on a un deuxieme groupe des etudiants d'age entre 18 et 24 ans que la majorite n'ont pas des comptes netflix et qu'ils preferent regarder les series mysterieuse.
+
+
+
